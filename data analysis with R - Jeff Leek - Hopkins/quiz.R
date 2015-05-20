@@ -63,5 +63,5 @@ print('Draw a random sample of 5 rows from the data frame');
 air[sample(1:153,5),]
 readkey();
 
-
+# 40 minutes, apply still with NA
 
