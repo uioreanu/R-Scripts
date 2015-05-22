@@ -1,0 +1,2 @@
+
+skell<-read.table('../TEST/Statistics with R - Coursera/Skeleton.txt', header=T)
