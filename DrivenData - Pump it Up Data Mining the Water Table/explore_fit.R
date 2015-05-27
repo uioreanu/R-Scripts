@@ -24,7 +24,8 @@ trainLabels<-NULL;
 ############################
 # date_recorded
 # maximize the chart, shaped like a Kuznets curve
-#plot(table(substr(train$date_recorded, 1, 7), train$status_group), col=train$status_group);
+#plot(table(train$date_recorded, train$status_group), col=c('green', 'yellow','red'), main="waterpump status based on recorded_date (strong)");
+ 
 
 train$date_recorded<-substr(train$date_recorded, 1, 7);
 test$date_recorded<-substr(test$date_recorded, 1, 7);
@@ -75,7 +76,7 @@ test$installer<-factor(as.character(test$installer)); # reset table data
 ############################
 
 trainGeo<-subset(train, train$longitude>=1 & train$latitude<=-1);
-plot(trainGeo$longitude, trainGeo$latitude, pch=20, col=trainGeo$status_group);
+plot(trainGeo$longitude, trainGeo$latitude, pch=20, col=trainGeo$status_group, main="Functional/Not Functional water pumps in Tanzania", xlab="Longitude", ylab="Latitude");
 
 # too many levels
 train$wpt_name<-NULL;		test$wpt_name<-NULL;
