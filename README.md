@@ -1,6 +1,7 @@
 ## R-Scripting library
 
 #### drivendata.org
+###### Current competitions: waterpumps + blooddonations
 Pump it up - water pumps in Tanzania
 data preparation, filter, description and inference. RF ntree=c(10,50,100,200); - OOB error decreases
 Current Sbmission Score (2015-05-27): 0.8192 (Rank 14, 0.0077 away from best ntree=100 )
