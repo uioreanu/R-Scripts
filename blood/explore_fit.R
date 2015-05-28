@@ -44,3 +44,11 @@ out<-data.frame(X=test$X, "Made Donation in March 2007"=as.numeric(predict.fit10
 write.csv(out, file='OutRF10000.csv', row.names=F);
 
 
+attach(train);
+fit.lm<-lm(Made.Donation.in.March.2007~Months.since.Last.Donation+Number.of.Donations+Months.since.First.Donation, data=train);
+pred.lm<-predict(fit.lm, test);
+out<-data.frame(X=test$X, "Made Donation in March 2007"=pred.lm);
+write.csv(out, file='LM.csv', row.names=F);
+ 
+
+
