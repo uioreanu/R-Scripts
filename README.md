@@ -9,6 +9,9 @@ Current Sbmission Score (2015-05-27): 0.8192 (Rank 14, 0.0077 away from best ntr
 ###### Map of the 59400 water pumps from the train data
 ![map of water pumps and status](https://github.com/uioreanu/R-Scripts/blob/master/DrivenData%20-%20Pump%20it%20Up%20Data%20Mining%20the%20Water%20Table/waterpumps.png?raw=true)
 
+Matches well the Tanzania Tourist Information Map:
+![Tanzania Tourist Information Map](http://www.nahdytravel.com/maps_information/images/tanzania_map.jpg)
+
 ###### Pumps by construction_year - clear pattern, older pumps break more often
 ![construction_year](https://github.com/uioreanu/R-Scripts/blob/master/DrivenData%20-%20Pump%20it%20Up%20Data%20Mining%20the%20Water%20Table/construction_year_U-shaped.png?raw=true)
 
