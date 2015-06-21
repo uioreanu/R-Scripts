@@ -13,14 +13,106 @@
 library(randomForest)
 library(rpart)
 library(rattle)
+#install.packages("caTools")
+#install.packages("ROCR")
+library(caTools)
+library(ROCR)
+
 
 if (getwd()=='C:/Users/calin/Documents') {
   setwd('../TEST/AnalyticsEdgeMIT/')
 }
 
 # fetch source data
-url<-'http://courses.edx.org/asset-v1:MITx+15.071x_2a+2T2015+type@asset+block/quality.csv'
+#url<-'http://courses.edx.org/asset-v1:MITx+15.071x_2a+2T2015+type@asset+block/quality.csv'
+url<-'quality.csv'
 dat<-read.csv(url)
+
+# repetitive results
+set.seed(88)
+
+# we want to split the data into train/test, but the first question is
+# how is the response variable distributed across the entire set?
+prop.table(table(dat$PoorCare))
+
+#       0         1 
+#0.7480916 0.2519084 
+
+# so a stratified sampling is required
+split<-sample.split(dat$PoorCare, SplitRatio=0.75)
+
+# now perform splitting:
+train<-dat[split==TRUE,]
+test<-dat[split==FALSE,]
+
+dim(train)
+#[1] 99 14
+dim(test)
+#[1] 32 14
+dim(dat)
+#[1] 131  14
+
+# build the model using binomial logit logistic regression
+dat.glm = glm(PoorCare ~ OfficeVisits + Narcotics, data=train, family=binomial)
+
+# build a prediction, then compare it to the test set
+train.predict<-predict(dat.glm, type="response")
+
+
+# build the confusion matrix with a threshold of 0.3
+table(train$PoorCare, train.predict>0.3)
+#    FALSE TRUE
+#  0    67    7
+#  1    12   13
+#Sensitivity = 13/25
+#Specificity = 67/74
+
+
+# build the confusion matrix with a threshold of 0.5
+table(train$PoorCare, train.predict>0.5)
+#    FALSE TRUE
+#  0    70    4
+#  1    15   10
+#Sensitivity = 10/25
+#Specificity = 70/74
+
+
+
+
+# build the confusion matrix with a threshold of 0.8
+table(train$PoorCare, train.predict>0.8)
+#    FALSE TRUE
+#  0    73    1
+#  1    23    2
+#Sensitivity = 2/25
+#Specificity = 73/74
+
+# build a prediction using the ROCR predictor to create the ROC plot
+ROCRpred<-prediction(train.predict, train$PoorCare)
+ROCRperf<-performance(ROCRpred, "tpr", "fpr")
+
+# build the Receiver Operator Characteristic curve
+plot(ROCRperf)
+plot(ROCRperf, colorize=T)
+plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7))
+
+predict.test<-predict(dat.glm, newdata=test, type="response")
+
+# how about test data?
+
+# compute the Area under the Curve (the ROC Curve, as a percent)
+ROCRpredTest = prediction(predict.test, test$PoorCare)
+auc = as.numeric(performance(ROCRpredTest, "auc")@y.values)
+
+
+ROCRpred<-prediction(predict.test, test$PoorCare)
+ROCRperf<-performance(ROCRpred, "tpr", "fpr")
+# build the Receiver Operator Characteristic curve
+plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7))
+
+
+
+#break
 
 dat.rf<-randomForest(as.factor(PoorCare)~., data=dat, ntree=10000)
 
@@ -72,7 +164,7 @@ fancyRpartPlot(dat.tree)
 varImpPlot(dat.rf)
 dat.rf$importance
 
-                                 0             1 MeanDecreaseAccuracy MeanDecreaseGini
+#                                 0             1 MeanDecreaseAccuracy MeanDecreaseGini
 #InpatientDays        -0.0006943443  0.0026957075         0.0001919211         2.223144
 #OfficeVisits          0.0130171058  0.0008984626         0.0097418626         5.230845
 #Narcotics             0.0192656235  0.0663816333         0.0308566620         7.453919
