@@ -1,22 +1,32 @@
-##############
-# Revolution R Enterprise ScaleR Course RevoScaleR
-# Big Data Analysis with Revolution R Enterprise
-# Revolution R Enterprise allows R users to process, visualize, and model 
-# terabyte-class data sets at a fraction of the time of legacy products 
-# without requiring expensive or specialized hardware. Introductory course 
-# for accomplished R users to experience the functionality of Revolution R Enterprise.
-##############
+---
+title: "Big Data Analysis with Revolution R Enterprise"
+author: "DataCamp Big Data Analysis Course"
+date: "29. Juni 2015"
+output: html_document
+---
 
-##############
+[https://www.datacamp.com/courses/big-data-revolution-r-enterprise-tutorial](Big Data Analysis with Revolution R Enterprise)
+
+### RevoScaleR Course 
+Big Data Analysis with Revolution R Enterprise
+Revolution R Enterprise allows R users to process, visualize, and model 
+terabyte-class data sets at a fraction of the time of legacy products 
+without requiring expensive or specialized hardware. Introductory course 
+for accomplished R users to experience the functionality of Revolution R Enterprise.
+
+***
+
 # CHAPTER 1
-# Introduction
-# Big Data Analytics Overview
-##############
+##Introduction
+##Big Data Analytics Overview
 
-# Question: do delayed flights fly faster?
-# data-source: 2007 airflight data.
-# data exploration, histogram
+Question: **Do delayed flights fly faster?** Using big data from the 2007 airflight as data-source. Run data exploration, histograms
+
+```{r eval=FALSE}
 > rxGetInfo(data = myAirlineXdf, getVarInfo = TRUE, numRows = 10)
+```
+
+```
 File name: /tmp/Rserv/conn18419/2007_subset.xdf 
 Number of observations: 149139 
 Number of variables: 5 
@@ -40,8 +50,14 @@ Data (10 rows starting with row 1):
 8                 61      48      335        0       -4
 9                 66      55      325       -5       -9
 10               295     279     2106       12      -23
-> ## Summarize the variables corresponding to actual elapsed time, time in the air, departure delay, flight Distance.
+```
+
+```{r eval=FALSE}
+> # Summarize the variables corresponding to actual elapsed time, time in the air, departure delay, flight Distance.
 > rxSummary(formula = ~ActualElapsedTime + AirTime + DepDelay + Distance, data = myAirlineXdf)
+```
+
+```
 Call:
 rxSummary(formula = ~ActualElapsedTime + AirTime + DepDelay + 
     Distance, data = myAirlineXdf)
@@ -56,19 +72,32 @@ Number of valid observations: 149139
  ActualElapsedTime 126.07290  71.07911  17  730 145568   3571      
  AirTime           102.54263  68.07955   0  704 145568   3571      
  DepDelay           11.36742  36.05140 -38 1243 145892   3247      
- Distance          717.78808 560.99114  31 4962 149139      0      
+ Distance          717.78808 560.99114  31 4962 149139      0   
+```
+
+```{r eval=FALSE}
 > # Histogram of departure delays
 > rxHistogram(formula = ~DepDelay, data = myAirlineXdf)
 > # Use parameters similar to a regular histogram to zero in on the interesting area
-> rxHistogram(formula = ~DepDelay, data = myAirlineXdf, xAxisMinMax = c(-100, 400), numBreaks = 500, xNumTicks = 10)
-> 
+> rxHistogram(formula = ~DepDelay, data = myAirlineXdf, 
+              xAxisMinMax = c(-100, 400), numBreaks = 500, xNumTicks = 10)
+```
 
-# add another variable
 
+## Adding another variable
+
+```{r eval=FALSE}
 > ## Calculate an additional variable: airspeed (distance traveled / time in the air). 
-> rxDataStep(inData = myAirlineXdf, outFile = myAirlineXdf, varsToKeep = c("Distance", "AirTime"), transforms = list(airSpeed = Distance/AirTime), append = "rows", overwrite = T)
+> rxDataStep(inData = myAirlineXdf, outFile = myAirlineXdf, 
+             varsToKeep = c("Distance", "AirTime"), 
+             transforms = list(airSpeed = Distance/AirTime), 
+             append = "rows", overwrite = T)
 > # Get Variable Information for airspeed
-> rxGetInfo(data = myAirlineXdf, getVarInfo = TRUE, varsToKeep = "airSpeed")
+> rxGetInfo(data = myAirlineXdf, getVarInfo = TRUE, 
+            varsToKeep = "airSpeed")
+```
+
+```
 File name: /tmp/Rserv/conn18419/2007_subset.xdf 
 Number of observations: 149139 
 Number of variables: 6 
@@ -76,8 +105,14 @@ Number of blocks: 1
 Compression type: zlib 
 Variable information: 
 Var 1: airSpeed, Type: numeric, Low/High: (0.7436, 833.0000)
-> # Summary for the airspeed variable
+```
+
+```{r eval=FALSE}
+# Summary for the airspeed variable
 > rxSummary(formula = ~airSpeed, data = myAirlineXdf)
+```
+
+```
 Call:
 rxSummary(formula = ~airSpeed, data = myAirlineXdf)
 
@@ -87,36 +122,61 @@ File name: 2007_subset.xdf
 Number of valid observations: 149139 
  
  Name     Mean     StdDev   Min       Max ValidObs MissingObs
- airSpeed 6.564265 3.008519 0.7435897 833 145565   3574      
+ airSpeed 6.564265 3.008519 0.7435897 833 145565   3574 
+```
+
+```{r eval=FALSE}
 > # Construct a histogram for airspeed
 > # We can use the xAxisMinMax argument to limit the X-axis.
 > rxHistogram(formula = ~airSpeed, data = myAirlineXdf)
-> rxHistogram(formula = ~airSpeed, data = myAirlineXdf, xNumTicks = 10, numBreaks = 1500, xAxisMinMax = c(0, 12))
+> rxHistogram(formula = ~airSpeed, data = myAirlineXdf, 
+            xNumTicks = 10, 
+            numBreaks = 1500, 
+            xAxisMinMax = c(0, 12))
+```
+
+## Tweaking airSpeed
+
+```{r eval=FALSE}
 > 
-
-# tweaking airSpeed
-
 > # Conversion to miles per hour (from miles per minute)
-> rxDataStep(inData = myAirlineXdf, outFile = myAirlineXdf, varsToKeep = c("airSpeed"), transforms = list(airSpeed = airSpeed * 60), overwrite = TRUE)
+> rxDataStep(inData = myAirlineXdf, outFile = myAirlineXdf, 
+            varsToKeep = c("airSpeed"), 
+            transforms = list(airSpeed = airSpeed * 60), 
+            overwrite = TRUE)
 > # Histogram for airspeed after conversion
 > rxHistogram(formula = ~airSpeed, data = myAirlineXdf)
+```
+
+## Is there a strong correlation between airSpeed and DepDelay/ArrDelay?
+
+```{r eval=FALSE}
 > 
-
-# is there a strong correlation between airSpeed and DepDelay/ArrDelay?
-
 > # Correlation for departure delay, arrival delay, and air speed
-> rxCor(formula = ~DepDelay + ArrDelay + airSpeed, data = myAirlineXdf, rowSelection = (airSpeed > 50) & (airSpeed < 800))
+> rxCor(formula = ~DepDelay + ArrDelay + airSpeed, 
+            data = myAirlineXdf, 
+            rowSelection = (airSpeed > 50) & (airSpeed < 800))
+```
+
+```
            DepDelay    ArrDelay    airSpeed
 DepDelay 1.00000000  0.93157838  0.02196339
 ArrDelay 0.93157838  1.00000000 -0.06668119
 airSpeed 0.02196339 -0.06668119  1.00000000
+```
+
+## Is there a linear relationship between airSpeed and DepDelay?
+
+```{r eval=FALSE}
 > 
-
-# is there a linear relationship between airSpeed and DepDelay?
-
 > # Regression for airSpeed based on departure delay
-> myLMobj <- rxLinMod(formula = airSpeed ~ DepDelay, data = myAirlineXdf, rowSelection = (airSpeed > 50) & (airSpeed < 800))
+> myLMobj <- rxLinMod(formula = airSpeed ~ DepDelay, 
+            data = myAirlineXdf, 
+            rowSelection = (airSpeed > 50) & (airSpeed < 800))
 > summary(myLMobj)
+```
+
+```
 Call:
 rxLinMod(formula = airSpeed ~ DepDelay, data = myAirlineXdf, 
     rowSelection = (airSpeed > 50) & (airSpeed < 800))
@@ -134,26 +194,34 @@ Coefficients:
 (Intercept) 3.901e+02  2.091e-01 1866.095 2.22e-16 ***
 DepDelay    4.638e-02  5.543e-03    8.367 2.22e-16 ***
 ---
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 75.95 on 145052 degrees of freedom
 Multiple R-squared: 0.0004824 
 Adjusted R-squared: 0.0004755 
 F-statistic: 70.01 on 1 and 145052 DF,  p-value: < 2.2e-16 
 Condition number: 1 
+```
 
-# low p factor, factor appears significant but the DepDelay is affected by a very low coefficient
-# the next question is if the relationship is non-linear, for example if flights with longer delays
-# do not "rush" anymore, and flights with shorter delays do "rush" to catch up.
-# this requires splitting the data on 10-fold intervals 
+A low p factor, factor appears significant but the DepDelay is affected by a very low coefficient
+the next question is **if the relationship is non-linear**, for example if flights with longer delays
+do not "rush" anymore, and flights with shorter delays do "rush" to catch up.
+this requires splitting the data on 10-fold intervals 
 
-##############
+***
+
 # CHAPTER 2
-# Data Exploration 
-# exploring the sample Dow Jones data
+## Data Exploration 
+## exploring the sample Dow Jones data
 
+
+```{r eval=FALSE}
+> 
 > ## extract the names of the possible options:
 > names(rxOptions())
+```
+
+```
  [1] "cintSysDir"            "includeDir"            "libDir"               
  [4] "linkDllName"           "unitTestDir"           "unitTestDataDir"      
  [7] "sampleDataDir"         "demoScriptsDir"        "fileSystem"           
@@ -163,21 +231,34 @@ Condition number: 1
 [19] "numCoresToUse"         "numDigits"             "showTransformFn"      
 [22] "defaultDecimalColType" "defaultMissingColType" "dataPath"             
 [25] "outDataPath"           "transformPackages"     "useSparseCube"        
-[28] "dropMain"              "coefLabelStyle"       
+[28] "dropMain"              "coefLabelStyle"   
+```
+
+```{r eval=FALSE}
+> 
 > ## extract the sample data directory:
 > rxGetOption("sampleDataDir")
+```
+
+```
 [1] "/usr/lib64/Revo-7.3/R-3.1.1/lib64/R/library/RevoScaleR/SampleData"
+```
+
+
+```{r eval=FALSE}
 > ## view the current value of the reportProgress option
 > rxGetOption("reportProgress")
 [1] 2
 > ## set the value of the reportProgress option to 0
 > rxOptions(reportProgress = 0)
 > 
-
 > ## set up the variable that has the address of the relevant data file:
 > djiXdf <- file.path(rxGetOption("sampleDataDir"), "DJIAdaily.xdf")
 > ## get information about that dataset:
 > rxGetInfo(djiXdf, getVarInfo = TRUE)
+```
+
+```
 File name: /usr/lib64/Revo-7.3/R-3.1.1/lib64/R/library/RevoScaleR/SampleData/DJIAdaily.xdf 
 Number of observations: 20636 
 Number of variables: 13 
@@ -198,9 +279,13 @@ Var 11: DayOfWeek
        5 factor levels: Monday Tuesday Wednesday Thursday Friday
 Var 12: DaysSince1928, Type: integer, Low/High: (274, 30286)
 Var 13: YearFrac, Type: numeric, Storage: float32, Low/High: (1928.7501, 2010.9186)
-> 
+```
 
+```{r eval=FALSE}
 > rxGetVarInfo(djiXdf)
+```
+
+```
 Var 1: Date, Type: character
 Var 2: Open, Type: numeric, Storage: float32, Low/High: (41.6300, 14165.0195)
 Var 3: High, Type: numeric, Storage: float32, Low/High: (42.6100, 14279.9600)
@@ -215,15 +300,22 @@ Var 11: DayOfWeek
        5 factor levels: Monday Tuesday Wednesday Thursday Friday
 Var 12: DaysSince1928, Type: integer, Low/High: (274, 30286)
 Var 13: YearFrac, Type: numeric, Storage: float32, Low/High: (1928.7501, 2010.9186)
+```
 
-
+```{r eval=FALSE}
 > ## get variable information for the dataset
 > djiVarInfo <- rxGetVarInfo(djiXdf)
 > names(djiVarInfo)
+```
+
+```
  [1] "Date"          "Open"          "High"          "Low"          
  [5] "Close"         "Volume"        "Adj.Close"     "Year"         
  [9] "Month"         "DayOfMonth"    "DayOfWeek"     "DaysSince1928"
-[13] "YearFrac"     
+[13] "YearFrac"  
+```
+
+```{r eval=FALSE}
 > ## extract information about the closing cost variable
 > (closeVarInfo <- djiVarInfo$Close)
 Type: numeric, Storage: float32, Low/High: (41.2200, 14164.5303)
@@ -232,21 +324,29 @@ Type: numeric, Storage: float32, Low/High: (41.2200, 14164.5303)
 [1] "rxVarInfo"
 > ## examine the structure of the closeVarInfo object:
 > str(closeVarInfo)
+```
+
+```
 List of 4
  $ varType: chr "numeric"
  $ storage: chr "float32"
  $ low    : num 41.2
  $ high   : num 14165
  - attr(*, "class")= chr "rxVarInfo"
+```
+
+```{r eval=FALSE}
 > ## extract the global maximum of the closing cost variable:
 > closeMax <- closeVarInfo[["high"]]
+```
 
 
-
-
-
+```{r eval=FALSE}
 > ## Basic summary statistics:
 > rxSummary(~DayOfWeek + Close + Volume, data = djiXdf)
+```
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: 0.001 seconds
@@ -276,8 +376,15 @@ Number of missing observations: 0
  Wednesday 4205  
  Thursday  4139  
  Friday    4121  
+```
+
+
+```{r eval=FALSE}
 > ## Frequency weighted:
 > rxSummary(~DayOfWeek + Close + Volume, data = djiXdf, fweights = "Volume")
+```
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: 0.002 seconds
@@ -312,8 +419,15 @@ Number of categories: 5
  Wednesday 1.821944e+12
  Thursday  1.802208e+12
  Friday    1.701024e+12
+```
+
+```{r eval=FALSE}
 > ## Basic frequency count:
 > rxCrossTabs(~DayOfWeek, data = djiXdf)
+```
+
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: Less than .001 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: Less than .001 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: Less than .001 seconds
@@ -337,9 +451,10 @@ Tuesday   4182
 Wednesday 4205
 Thursday  4139
 Friday    4121
-> 
+```
 
 
+```{r eval=FALSE}
 > ## Numeric Variables
 > rxHistogram(~Close, data = djiXdf)
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.004 seconds
@@ -369,7 +484,10 @@ Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: 0.004 seconds
 Rows Read: 2636, Total Rows Processed: 20636, Total Chunk Time: 0.003 seconds 
 Computation time: 0.021 seconds.
 > 
+```
 
+
+```{r eval=FALSE}
 > ## Simple bivariate line plot:
 > rxLinePlot(Close ~ DaysSince1928, data = djiXdf)
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.003 seconds
@@ -395,10 +513,15 @@ Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: 0.002 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: 0.002 seconds
 Rows Read: 2636, Total Rows Processed: 20636, Total Chunk Time: 0.001 seconds 
 > 
+```
 
-
+```{r eval=FALSE}
 > ## Compute the the summed volume for each day of the week for each month:
 > rxCrossTabs(formula = Volume ~ F(Month):DayOfWeek, data = djiXdf)
+```
+
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: 0.001 seconds
@@ -431,8 +554,15 @@ F_Month       Monday      Tuesday    Wednesday     Thursday       Friday
      10 145755510672 162156030160 173506599040 176610670944 174333560160
      11 147301549648 155582169504 150121160240 130254850080 132521269088
      12 115565549936 124591890400 130164970256 124772270800 119805110368
+```
+
+```{r eval=FALSE}
 > ## Compute the the average volume for each day of the week for each month:
-> rxCrossTabs(formula = Volume ~ F(Month):DayOfWeek, data = djiXdf, mean = TRUE)
+> rxCrossTabs(formula = Volume ~ F(Month):DayOfWeek, data = djiXdf, mean = TRUE
+```
+
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: 0.001 seconds
@@ -466,8 +596,14 @@ F_Month    Monday   Tuesday Wednesday  Thursday    Friday
      10 406004208 444263096 481962775 485194151 478938352
      11 423280315 505136914 427695613 482425371 376480878
      12 340901327 353954234 372965531 356492202 351334635
+```
+
+```{r eval=FALSE}
 > ## Compute the the average closing price for each day of the week for each month, using volume as frequency weights
 > rxCrossTabs(formula = Close ~ F(Month):DayOfWeek, data = djiXdf, means = TRUE, fweights = "Volume")
+```
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.002 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: 0.002 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: 0.002 seconds
@@ -502,11 +638,14 @@ F_Month   Monday  Tuesday Wednesday Thursday   Friday
      10 9729.465 9653.250  9666.057 9518.674 9523.039
      11 9819.758 9832.750  9757.541 9858.042 9770.669
      12 9473.085 9486.524  9671.284 9701.425 9642.693
-> 
+```
 
-
+```{r eval=FALSE}
 > ## Compute the the summed volume for each day of the week:
 > rxCrossTabs(Volume ~ DayOfWeek, data = djiXdf)
+```
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: Less than .001 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: Less than .001 seconds
@@ -531,7 +670,14 @@ Tuesday   1.774277e+12
 Wednesday 1.821944e+12
 Thursday  1.802208e+12
 Friday    1.701024e+12
+```
+
+```{r eval=FALSE}
+# or use the similar function rxCube
 > rxCube(Volume ~ DayOfWeek, data = djiXdf, means = FALSE)
+```
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: Less than .001 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: Less than .001 seconds
@@ -553,9 +699,15 @@ Statistic: Volume sums
 2 Tuesday   1.774277e+12 4182  
 3 Wednesday 1.821944e+12 4205  
 4 Thursday  1.802208e+12 4139  
-5 Friday    1.701024e+12 4121  
+5 Friday    1.701024e+12 4121
+```
+
+```{r eval=FALSE}
 > ## Compute the the summed volume for each day of the week for each month:
 > rxCrossTabs(Volume ~ F(Month):DayOfWeek, data = djiXdf)
+```
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: 0.001 seconds
@@ -588,7 +740,14 @@ F_Month       Monday      Tuesday    Wednesday     Thursday       Friday
      10 145755510672 162156030160 173506599040 176610670944 174333560160
      11 147301549648 155582169504 150121160240 130254850080 132521269088
      12 115565549936 124591890400 130164970256 124772270800 119805110368
+```
+
+```{r eval=FALSE}
+# Month as.factor
 > rxCube(Volume ~ F(Month):DayOfWeek, data = djiXdf, means = FALSE)
+```
+
+```
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 12000, Total Chunk Time: 0.001 seconds
 Rows Read: 6000, Total Rows Processed: 18000, Total Chunk Time: 0.001 seconds
@@ -666,7 +825,11 @@ Statistic: Volume sums
 57 9       Friday    144968749200 349   
 58 10      Friday    174333560160 364   
 59 11      Friday    132521269088 352   
-60 12      Friday    119805110368 341   
+60 12      Friday    119805110368 341
+```
+
+
+```{r eval=FALSE}
 > ## Compute the the average volume for each day of the week for each month:
 > rxCube(Volume ~ F(Month):DayOfWeek, data = djiXdf)
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.001 seconds
@@ -745,7 +908,11 @@ Statistic: Volume means
 57 9       Friday    415383236 349   
 58 10      Friday    478938352 364   
 59 11      Friday    376480878 352   
-60 12      Friday    351334635 341   
+60 12      Friday    351334635 341
+```
+
+
+```{r eval=FALSE}
 > ## Compute the the average closing price for each day of the week for each month, using volume as frequency weights
 > rxCube(Close ~ F(Month):DayOfWeek, data = djiXdf, fweights = "Volume")
 Rows Read: 6000, Total Rows Processed: 6000, Total Chunk Time: 0.002 seconds
@@ -827,13 +994,15 @@ Statistic: Close means
 59 11      Friday    9770.669 132521269088
 60 12      Friday    9642.693 119805110368
 > 
+```
 
 
-##############
+***
+
 # CHAPTER 3
-# Data Manipulation 
-# 
+## Data Manipulation 
 
+```{r eval=FALSE}
 sampleDataDir<-rxOptions()[['sampleDataDir']]
 list.files(path=sampleDataDir, pattern = "mortDefaultSmall2.*.csv")
 
@@ -1014,14 +1183,15 @@ Number of valid observations: 1e+05
  Name              Mean         StdDev Min       Max      ValidObs MissingObs
  scaledCreditScore 8.741097e-15 1      -4.583165 4.488049 1e+05    0         
 > 
+```
 
+***
 
-##############
 # CHAPTER 4
-# Data Analysis
-# 
-# Big data analytics with RRE: Modeling
-# airline data
+## Data Analysis
+Big data analytics with RRE: Modeling airline data
+
+```{r eval=FALSE}
 
 #rxLinMod similar to R's lm()
 
@@ -1173,7 +1343,7 @@ DayOfWeek=Friday      4.4725     0.1957  22.850 2.22e-16 ***
 DayOfWeek=Saturday    1.5435     0.1934   7.981 2.22e-16 ***
 DayOfWeek=Sunday     Dropped    Dropped Dropped  Dropped    
 ---
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 40.65 on 582621 degrees of freedom
 Multiple R-squared: 0.001869 
@@ -1213,7 +1383,7 @@ DayOfWeek=Friday     14.8043     0.1436  103.10 2.22e-16 *** |  80142
 DayOfWeek=Saturday   11.8753     0.1404   84.59 2.22e-16 *** |  83851
 DayOfWeek=Sunday     10.3318     0.1330   77.67 2.22e-16 *** |  93395
 ---
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 Residual standard error: 40.65 on 582621 degrees of freedom
 Multiple R-squared: 0.001869 (as if intercept included)
@@ -1221,10 +1391,9 @@ Adjusted R-squared: 0.001858
 F-statistic: 181.8 on 6 and 582621 DF,  p-value: < 2.2e-16 
 Condition number: 1 
 > 
+```
 
 
 
 
-
- 
 
