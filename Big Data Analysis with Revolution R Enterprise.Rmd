@@ -5,7 +5,7 @@ date: "29. Juni 2015"
 output: html_document
 ---
 
-[https://www.datacamp.com/courses/big-data-revolution-r-enterprise-tutorial](Big Data Analysis with Revolution R Enterprise)
+[Big Data Analysis with Revolution R Enterprise](https://www.datacamp.com/courses/big-data-revolution-r-enterprise-tutorial)
 
 ### RevoScaleR Course 
 Big Data Analysis with Revolution R Enterprise
