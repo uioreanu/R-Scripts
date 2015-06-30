@@ -2176,7 +2176,7 @@ prop.table(conf.mat)
 
 ```
 
-# This concludes the Course [Big Data Analysis with Revolution R Enterprise](https://www.datacamp.com/courses/big-data-revolution-r-enterprise-tutorial)
-# Continue unlocking the power of the R language for advanced analytics on big data
+## This concludes the Course [Big Data Analysis with Revolution R Enterprise](https://www.datacamp.com/courses/big-data-revolution-r-enterprise-tutorial)
+## Continue unlocking the power of the R language for advanced analytics on big data:
 # [http://www.revolutionanalytics.com/]
 
