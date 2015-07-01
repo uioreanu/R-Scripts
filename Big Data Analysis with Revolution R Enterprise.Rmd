@@ -1394,6 +1394,789 @@ Condition number: 1
 ```
 
 
+***
+
+##Prediction and Crossvalidations
+
+```{r eval=FALSE}
+> args(RevoScaleR::rxPredict.default)
+function (modelObject, data=NULL, outData = NULL....
+
+# use the linear regression model that combines the day of the week
+# with the 2 hours bin for the hours where air-traffic is at its peaks.
+> arDelayLm <- rxLinMod(ArrDelay ~ DayOfWeek:depTimeCat,
+		data = airDS, cube = TRUE,
+		transforms=list( depTimeCat = cut(CRSDepTime, breaks=seq(from=6, to=23, by=2))
+		)
+)
+
+# large output
+summary(arDelayLm)
+#63 coefficients
+
+# call prediction function, somehow similar to R's predict
+rxPredict(modelObject = arrDelayLm, 
+			data = airDS, 
+			outData = airDS, 
+			overwrite = TRUE)
+
+# the linear regression model generated a new variable called ArrDelay_Pred 
+rxGetVarInfo(airDS)
+# Var 1...
+# ArrDelay_Pred 
 
 
+# compute resiguals
+# call prediction function, somehow similar to R's predict
+rxPredict(modelObject = arrDelayLm, 
+			data = airDS, 
+			outData = airDS, 
+			computeResiduals = TRUE,
+			overwrite = TRUE)
+# the residuals are also there
+rxGetVarInfo(airDS)
+# Var 1...
+# ArrDelay_Pred 
+# ArrDelay_Resid 
+
+# extremely skewed residuals
+rxHistogram( ~ ArrDelay_Resid, data = airDS)
+# we might need to adjust the data points for model
+
+# split data into train/test
+rxDataStep(inData = airDS, outFile = airDS, transforms = list(urv = runif(length(DayOfWeek))), append = "cols", overwrite=TRUE)
+
+rxHistogram( ~urv, data = airDS, xNumTicks = 10)
+
+# then use cut to split the data
+rxDataStep(inData = airDS, outFile = airDS, 
+			transforms = list(TrainTest = cut(
+					urv, 
+					breaks = c(0, 0.8, 1), 
+					labels = c("Train", "Test")
+			)), 
+			append = "cols", overwrite=TRUE)
+
+# 80% 20% split
+rxSummary(~TrainTest, data = airDS)
+
+# now split it into several xds files
+mySplit <- rxSplit(inData = airDS, splitByFactor = "TrainTest", 
+			rowSelection = ArrDelay < 450,
+			overwrite = TRUE)
+
+# two files were created
+names(mySplit)
+
+# Computing Std. Errors
+rxPredict(modelObject = arrDelayLm.train, 
+			data = testDS, 
+			outData = testDS, 
+			computeResiduals = TRUE,
+			computeStdErrors = TRUE,
+			overwrite = TRUE)
+# but we must specify the covCoef = TRUE argument with the linear Model
+> arDelayLm <- rxLinMod(ArrDelay ~ DayOfWeek:depTimeCat,
+		data = airDS, cube = TRUE,
+		transforms=list( depTimeCat = cut(CRSDepTime, breaks=seq(from=6, to=23, by=2)),
+		covCoef = TRUE
+		)
+)
+```
+
+***
+
+## Generating Predictions and Residuals
+## Extract model predictions using rxPredict().
+
+```{r eval=FALSE}
+summary(myLM2)
+
+mySubset <- rxDataStep(inData = myAirlineXdf, startRow = 0, numRows = 1000) 
+
+rxPredict(modelObject = myLM2, 
+        data = myAirlineXdf, 
+        outData = mySubset, 
+        writeModelVars = TRUE,
+        computeResiduals = FALSE, 
+        overwrite = TRUE)
+
+#rxGetVarInfo(myAirlineXdf)
+
+#rxPredict(modelObject = myLM2, 
+#        data = myAirlineXdf, outData = myAirlineXdf, 
+#        computeResiduals = TRUE, 
+#        overwrite = TRUE)
+        
+#rxGetVarInfo(myAirlineXdf)
+
+
+## summarize model first
+summary(myLM2)
+
+## path to new dataset storing predictions
+myNewADS <- "myNEWADS.xdf"
+
+## generate predictions
+rxPredict(modelObject = myLM2, data = myAirlineXdf, 
+          outData = myNewADS, 
+          writeModelVars = TRUE)
+## get information on the new dataset
+rxGetInfo(myNewADS, getVarInfo = TRUE)
+
+## Generate residuals.
+rxPredict(modelObject = myLM2, data = myAirlineXdf, 
+          outData = myNewADS, 
+          writeModelVars = TRUE, 
+          computeResiduals = TRUE, 
+          overwrite = TRUE)
+## get information on the new dataset
+rxGetInfo(myNewADS, getVarInfo = TRUE)
+```
+
+***
+
+
+#Logistic Regression and the GLM
+
+
+```{r eval=FALSE}
+# set the path
+mortXdf <- file.path(rxGetOption('sampleDataDir'), 'mortDefaultSmall.xdf')
+
+# review the data
+rxGetInfo(data = mortXdf, getVarInfo = TRUE)
+# 100k vars on 6 vars
+
+
+args(rxLogit)
+## rxLogit(formula, data, pweights = NULL, fweights = NULL, cube = FALSE,
+##        cubePredictions = FALSE, variableSelection = list(), rowSelection = NULL, 
+##        transforms = NULL, transformObjects = NULL,
+##        transformFunc = NULL, transformVars = NULL, 
+##        transformPackages = NULL, transformEnvir = NULL,   
+##        dropFirst = FALSE, dropMain = rxGetOption("dropMain"),
+##        covCoef = FALSE, covData = FALSE, covariance = FALSE,
+##        initialValues = NULL, 
+##        coefLabelStyle = rxGetOption("coefLabelStyle"),
+##        blocksPerRead = rxGetOption("blocksPerRead"), 
+##        maxIterations = 25, coeffTolerance = 1e-06, 
+##        gradientTolerance = 1e-06, objectiveFunctionTolerance = 1e-08,
+##        reportProgress = rxGetOption("reportProgress"), verbose = 0,
+##        computeContext = rxGetOption("computeContext"),
+##        ...)
+
+# example of using rxLogit
+logitModel1 <- rxLogit(default ~F(year) + ccDebt + creditScore + houseAge + yearsEmploy, 
+		data= mortXdf,
+		dropFirst = TRUE)
+
+# extract results
+summary(logitModel1)
+
+dataWithPredictions <- rxPredict(modelObject = logitModel1, 
+		data = newData, 
+		outData = newData, 
+		type="response")
+
+dataWithPredictions
+
+# more general rxGlm glm
+
+# 5% sample of the US Census
+bigCensusData <-file.path(dataPath, 'CensusPCT2000.xdf')
+rxGetInfo(bigCensusData)
+# number of observations: 14 million
+
+propinFile <- file.path('xdf/CensusPropertyIns.xdf')
+rxDataStep(inData = bigCensusData,
+		rowSelection = (related == "Head/Household") & (age>20) & (age<90),
+		varsToKeep = c("propinsr", "age", "sex", "region", "perwt"),
+		outFile = propinFile,
+		blocksPerRead = 10,
+		overwrite = TRUE)
+
+rxGetInfoXdf(propinFile, gerVarInfo = TRUE)
+
+# large level of levels
+rxGetInfoXdf(~region, data = propinFile)
+
+# re-level
+regionLevels <- list (....)
+rxFactors(inData= propinFile, outFile = propinFile, factorInfo = list(region=list(newLevels = regionLevels)
+
+# fewer level of levels
+rxGetInfoXdf(~region, data = propinFile)
+
+# predict property insurance cost
+rxHistogram(~propinsr, data=propinFile, pweights="perwt", numBreaks = 50)
+
+# predict property insurance cost
+rxHistogram(~propinsr, data=propinFile, pweights="perwt", numBreaks = 50)
+
+# use a tweedie distribution
+propinGlm <- rGlm(propinsr~sex+F(age) + region,
+		pweights = "perwt",
+		data=propinFile,
+		family = rxTweedie(var.power=1.5),
+		dropFirst = TRUE
+		)
+
+#look at coefficients
+printCoefmat(coef(summary(propinGlm)))
+
+# all age values are significants
+
+# plot predictions
+# simulate data
+predData <- rxPredict(propinGlm,
+		data = predData,
+		outData = predData,
+		predVarNames=c('predicted'),
+		overwrite=TRUE)	
+
+# type of predictions for linear models
+# defaults to "response" - places the predicted variable on the scale of the response variable
+# different than R's glm predict, which defaults on the link prediction on the scale of the linear predictor
+
+rxLinePlot(predicted~age|region, group=sex, data=predData)
+```
+
+***
+
+# Exercises
+
+```{r eval=FALSE}
+> # look at the meta data
+> rxGetInfo(mortData, getVarInfo = TRUE)
+File name: /usr/lib64/Revo-7.3/R-3.1.1/lib64/R/library/RevoScaleR/SampleData/mortDefaultSmall.xdf 
+Number of observations: 1e+05 
+Number of variables: 6 
+Number of blocks: 10 
+Compression type: zlib 
+Variable information: 
+Var 1: creditScore, Type: integer, Low/High: (470, 925)
+Var 2: houseAge, Type: integer, Low/High: (0, 40)
+Var 3: yearsEmploy, Type: integer, Low/High: (0, 14)
+Var 4: ccDebt, Type: integer, Low/High: (0, 14094)
+Var 5: year, Type: integer, Low/High: (2000, 2009)
+Var 6: default, Type: integer, Low/High: (0, 1)
+> # Construct the logit model
+> logitModel <- rxLogit(formula = default ~ houseAge + F(year) + ccDebt + creditScore + yearsEmploy, data = mortData)
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.005 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.005 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.005 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.005 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.005 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.005 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.005 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.005 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.005 seconds 
+
+Starting values (iteration 1) time: 0.059 secs.
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.008 seconds 
+
+Iteration 2 time: 0.086 secs.
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.008 seconds 
+
+Iteration 3 time: 0.083 secs.
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.008 seconds 
+
+Iteration 4 time: 0.085 secs.
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.008 seconds 
+
+Iteration 5 time: 0.082 secs.
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.008 seconds 
+
+Iteration 6 time: 0.083 secs.
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.008 seconds 
+
+Iteration 7 time: 0.084 secs.
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.008 seconds 
+
+Iteration 8 time: 0.079 secs.
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.007 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.007 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.008 seconds 
+
+Iteration 9 time: 0.078 secs.
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.004 seconds
+Rows Read: 10000, Total Rows Processed: 20000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 30000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 40000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 50000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 60000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 70000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 80000, Total Chunk Time: 0.008 seconds
+Rows Read: 10000, Total Rows Processed: 90000, Total Chunk Time: 0.009 seconds
+Rows Read: 10000, Total Rows Processed: 100000, Total Chunk Time: 0.008 seconds 
+
+Iteration 10 time: 0.082 secs.
+
+Elapsed computation time: 0.803 secs.
+> # Summarize the result contained in logitModel1
+> summary(logitModel)
+Call:
+rxLogit(formula = default ~ houseAge + F(year) + ccDebt + creditScore + 
+    yearsEmploy, data = mortData)
+
+Logistic Regression Results for: default ~ houseAge + F(year) + ccDebt
+    + creditScore + yearsEmploy
+Data: mortData (RxXdfData Data Source)
+File name:
+    /usr/lib64/Revo-7.3/R-3.1.1/lib64/R/library/RevoScaleR/SampleData/mortDefaultSmall.xdf
+Dependent variable(s): default
+Total independent variables: 15 (Including number dropped: 1)
+Number of valid observations: 1e+05
+Number of missing observations: 0 
+-2*LogLikelihood: 2946.1416 (Residual deviance on 99986 degrees of freedom)
+ 
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -6.939e+00  7.957e-01  -8.720 2.22e-16 ***
+houseAge     2.877e-02  7.036e-03   4.089 4.33e-05 ***
+F_year=2000 -3.738e+00  3.275e-01 -11.413 2.22e-16 ***
+F_year=2001 -2.701e+00  2.268e-01 -11.906 2.22e-16 ***
+F_year=2002 -3.798e+00  3.386e-01 -11.216 2.22e-16 ***
+F_year=2003 -4.644e+00  5.150e-01  -9.018 2.22e-16 ***
+F_year=2004 -4.492e+00  4.400e-01 -10.208 2.22e-16 ***
+F_year=2005 -4.533e+00  4.665e-01  -9.717 2.22e-16 ***
+F_year=2006 -4.544e+00  4.787e-01  -9.491 2.22e-16 ***
+F_year=2007 -3.130e+00  2.629e-01 -11.905 2.22e-16 ***
+F_year=2008 -5.695e-01  1.230e-01  -4.631 3.64e-06 ***
+F_year=2009    Dropped    Dropped Dropped  Dropped    
+ccDebt       1.320e-03  3.932e-05  33.574 2.22e-16 ***
+creditScore -7.824e-03  1.081e-03  -7.240 2.22e-16 ***
+yearsEmploy -2.675e-01  2.741e-02  -9.762 2.22e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Condition number of final variance-covariance matrix: 6.2216 
+Number of iterations: 10
+> 
+
+
+
+
+> ## Summarize the model
+> summary(logitModel)
+Call:
+rxLogit(formula = default ~ houseAge + F(year) + ccDebt + creditScore + 
+    yearsEmploy, data = mortData, dropFirst = T)
+
+Logistic Regression Results for: default ~ houseAge + F(year) + ccDebt
+    + creditScore + yearsEmploy
+Data: mortData (RxXdfData Data Source)
+File name:
+    /usr/lib64/Revo-7.3/R-3.1.1/lib64/R/library/RevoScaleR/SampleData/mortDefaultSmall.xdf
+Dependent variable(s): default
+Total independent variables: 15 (Including number dropped: 1)
+Number of valid observations: 1e+05
+Number of missing observations: 0 
+-2*LogLikelihood: 2946.1416 (Residual deviance on 99986 degrees of freedom)
+ 
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -1.068e+01  8.682e-01 -12.298 2.22e-16 ***
+houseAge     2.877e-02  7.036e-03   4.089 4.33e-05 ***
+F_year=2000    Dropped    Dropped Dropped  Dropped    
+F_year=2001  1.037e+00  3.773e-01   2.748    0.006 ** 
+F_year=2002 -5.989e-02  4.514e-01  -0.133    0.894    
+F_year=2003 -9.066e-01  5.958e-01  -1.522    0.128    
+F_year=2004 -7.543e-01  5.304e-01  -1.422    0.155    
+F_year=2005 -7.952e-01  5.536e-01  -1.436    0.151    
+F_year=2006 -8.059e-01  5.636e-01  -1.430    0.153    
+F_year=2007  6.074e-01  3.988e-01   1.523    0.128    
+F_year=2008  3.168e+00  3.306e-01   9.584 2.22e-16 ***
+F_year=2009  3.738e+00  3.275e-01  11.413 2.22e-16 ***
+ccDebt       1.320e-03  3.932e-05  33.574 2.22e-16 ***
+creditScore -7.824e-03  1.081e-03  -7.240 2.22e-16 ***
+yearsEmploy -2.675e-01  2.741e-02  -9.762 2.22e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Condition number of final variance-covariance matrix: 110.2895 
+Number of iterations: 10
+> ## view the first few rows
+> head(newData)
+  year ccDebt creditScore houseAge yearsEmploy
+1 2006   1000         700       10           7
+2 2006   1000         700       30           7
+3 2006   1000         800       10           7
+4 2006   1000         800       30           7
+5 2009  10000         700       10           7
+6 2009  10000         700       30           7
+> # Make predictions
+> dataWithPredictions <- rxPredict(modelObject = logitModel, data = newData, outData = newData, type = "response")
+Rows Read: 8, Total Rows Processed: 8, Total Chunk Time: 0.002 seconds 
+> ## view the predictions
+> dataWithPredictions
+  year ccDebt creditScore houseAge yearsEmploy default_Pred
+1 2006   1000         700       10           7 3.309304e-08
+2 2006   1000         700       30           7 5.883328e-08
+3 2006   1000         800       10           7 1.513391e-08
+4 2006   1000         800       30           7 2.690528e-08
+5 2009  10000         700       10           7 3.098985e-01
+6 2009  10000         700       30           7 4.439345e-01
+7 2009  10000         800       10           7 1.703740e-01
+8 2009  10000         800       30           7 2.674509e-01
+> 
+
+
+#Higher Default Probability
+#
+#According to the model estimated in logitModel, in which year(s) does having a house older than 30 years correspond with a higher probability of default than having a house less than 10 years old? Select all that apply.
+> sum<-summary(logitModel)
+> round(sum$coefficients,4)
+
+(Intercept) -10.6763     0.8682 -12.2976   0.0000
+houseAge      0.0288     0.0070   4.0891   0.0000
+F_year=2000       NA         NA       NA       NA
+F_year=2001   1.0367     0.3773   2.7478   0.0060
+F_year=2002  -0.0599     0.4514  -0.1327   0.8945
+F_year=2003  -0.9066     0.5958  -1.5217   0.1281
+F_year=2004  -0.7543     0.5304  -1.4220   0.1550
+F_year=2005  -0.7952     0.5536  -1.4364   0.1509
+F_year=2006  -0.8059     0.5636  -1.4299   0.1527
+F_year=2007   0.6074     0.3988   1.5230   0.1278
+F_year=2008   3.1681     0.3306   9.5843   0.0000
+F_year=2009   3.7376     0.3275  11.4132   0.0000
+ccDebt        0.0013     0.0000  33.5745   0.0000
+creditScore  -0.0078     0.0011  -7.2404   0.0000
+yearsEmploy  -0.2675     0.0274  -9.7620   0.0000
+
+# Correct! Because there are no interactions in our estimated model, the main effect of **houseAge** would indicate that, on average, the older the house, the larger the default probability.
+ 
+> round(dataWithPredictions,4)
+  year ccDebt creditScore houseAge yearsEmploy default_Pred
+1 2006   1000         700       10           7       0.0000
+2 2006   1000         700       30           7       0.0000
+3 2006   1000         800       10           7       0.0000
+4 2006   1000         800       30           7       0.0000
+5 2009  10000         700       10           7       0.3099
+6 2009  10000         700       30           7       0.4439
+7 2009  10000         800       10           7       0.1704
+8 2009  10000         800       30           7       0.2675
+```
+
+***
+
+# K-means Clustering + Decision tree estimations
+
+```{r eval=FALSE}
+# mortgage default dataset
+sampleDataDir <- rxGetOption('sampleDataDir')
+ndata <- file.path(sampleDataDir, 'mortDefaultSmall.xdf')
+mortDefault2<-file.path('xdf/mortDefault2.xdf')
+
+# transform to create a random variable
+rxDataStep(inData = ndata, outFile = mortDefault2,
+		transforms = list(RandomSample = sample(10, size=.rxNumRows, replace = TRUE)),
+		overwrite = TRUE)
+rxGetVarInfo(mortDefault2)
+#..
+
+args(rxKmeans)
+##rxKmeans(formula, data, 
+##         outFile = NULL, outColName = ".rxCluster", 
+##         writeModelVars = FALSE, extraVarsToWrite = NULL,
+##         overwrite = FALSE, numClusters = NULL, centers = NULL, 
+##         algorithm = "Lloyd", numStartRows = 0, maxIterations = 1000, 
+##         numStarts = 1, rowSelection = NULL, 
+##         transforms = NULL, transformObjects = NULL,
+##         transformFunc = NULL, transformVars = NULL, 
+##         transformPackages = NULL, transformEnvir = NULL,
+##         blocksPerRead = rxGetOption("blocksPerRead"),
+##         reportProgress = rxGetOption("reportProgress"), verbose = 0,
+##         computeContext = rxGetOption("computeContext"),
+##         xdfCompressionLevel = rxGetOption("xdfCompressionLevel"), ...)
+
+nd.km <- rxKmeans(formula=~creditScore + houseAge + yearsEmploy + ccDebt + year,
+		data = mortDefault2,
+		numClusters = 3,
+		outFile = mortDefault2,
+		algorithm = 'lloyd',
+		overwrite = TRUE)
+
+print(nd.km)
+#...
+
+# new variable called .rxCluster between 1:3
+rxGetVarInfo(mortDefault2)
+
+# extract and plot the clusters
+ndDf <- rxXdfToDataFrame(file = mortDefault2, rowSelection = RandomSample ==5)
+plot(ndDf[,1:4], col=ndDf$.rxCluster)
+
+# the splis is lead by ccDebt because the variation inside this variable is high and it dominates the cluster splitting
+# to avoid this we would need to "level" all the variables 
+
+> ## Examine the mortData dataset
+> rxGetInfo(mortData, getVarInfo = TRUE)
+File name: /usr/lib64/Revo-7.3/R-3.1.1/lib64/R/library/RevoScaleR/SampleData/mortDefaultSmall.xdf 
+Number of observations: 1e+05 
+Number of variables: 6 
+Number of blocks: 10 
+Compression type: zlib 
+Variable information: 
+Var 1: creditScore, Type: integer, Low/High: (470, 925)
+Var 2: houseAge, Type: integer, Low/High: (0, 40)
+Var 3: yearsEmploy, Type: integer, Low/High: (0, 14)
+Var 4: ccDebt, Type: integer, Low/High: (0, 14094)
+Var 5: year, Type: integer, Low/High: (2000, 2009)
+Var 6: default, Type: integer, Low/High: (0, 1)
+> ## set up a path to a new xdf file
+> myNewMortData = "myMDwithKMeans.xdf"
+> ## run k-means:
+> KMout <- rxKmeans(formula = ~ccDebt + creditScore + houseAge, data = mortData, outFile = myNewMortData, rowSelection = year == 2000, numClusters = 4, writeModelVars = TRUE)
+
+Cannot use 'rowSelection' when appending columns to an existing data source.
+Error : 
+> print(KMout)
+Call:
+rxKmeans(formula = ~ccDebt + creditScore + houseAge, data = mortData, 
+    outFile = myNewMortData, writeModelVars = TRUE, numClusters = 4, 
+    rowSelection = year == 2000)
+
+Data: mortData
+Number of valid observations: 10000
+Number of missing observations: 0 
+Clustering algorithm:  
+ 
+K-means clustering with 4 clusters of sizes 1844, 1425, 3224, 3507
+
+Cluster means:
+    ccDebt creditScore houseAge
+1 2085.177    698.6274 19.97560
+2 8134.783    700.7565 20.01825
+3 6038.094    698.9132 20.04156
+4 4230.114    700.3975 19.93584
+
+Within cluster sum of squares by cluster:
+         1          2          3          4 
+1340550664 1128944862  967982253 1090800080 
+
+Available components:
+ [1] "centers"       "size"          "withinss"      "valid.obs"    
+ [5] "missing.obs"   "numIterations" "tot.withinss"  "totss"        
+ [9] "betweenss"     "cluster"       "params"        "formula"      
+[13] "call"         
+> ## Examine the variables in the new dataset:
+> rxGetInfo(myNewMortData, getVarInfo = TRUE)
+File name: /tmp/Rserv/conn16352/myMDwithKMeans.xdf 
+Number of observations: 10000 
+Number of variables: 5 
+Number of blocks: 1 
+Compression type: zlib 
+Variable information: 
+Var 1: .rxCluster, Type: integer, Low/High: (1, 4)
+Var 2: ccDebt, Type: integer, Low/High: (0, 12275)
+Var 3: creditScore, Type: integer, Low/High: (486, 895)
+Var 4: houseAge, Type: integer, Low/High: (0, 40)
+Var 5: year, Type: integer, Low/High: (2000, 2000)
+> ## Summarize the cluster variable:
+> rxSummary(~F(.rxCluster), data = myNewMortData)
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.001 seconds 
+Computation time: 0.004 seconds.
+Call:
+rxSummary(formula = ~F(.rxCluster), data = myNewMortData)
+
+Summary Statistics Results for: ~F(.rxCluster)
+Data: myNewMortData (RxXdfData Data Source)
+File name: myMDwithKMeans.xdf
+Number of valid observations: 10000 
+ 
+
+Category Counts for F_.rxCluster
+Number of categories: 4
+Number of valid observations: 10000
+Number of missing observations: 0
+
+ F_.rxCluster Counts
+ 1            1844  
+ 2            1425  
+ 3            3224  
+ 4            3507  
+> ## read into memory 10% of the data:
+> mydf <- rxXdfToDataFrame(myNewMortData, rowSelection = randSamp == 1, varsToDrop = "year", transforms = list(randSamp = sample(10, size = .rxNumRows, replace = TRUE)))
+Rows Read: 10000, Total Rows Processed: 10000, Total Chunk Time: 0.005 seconds 
+
+Rows Processed: 1020
+Time to read data file: less than .001 secs.
+Time to convert to data frame: less than .001 secs.
+> ## visualize the clusters:
+> plot(mydf[-1], col = mydf$.rxCluster)
+> 
+```
+
+***
+
+# Decision Trees
+
+```{r eval=FALSE}
+# continue using the mortgage defaulting dataset
+mortDefault2<-file.path('xdf/mortDefault2.xdf')
+rxGetVarInfo(mortDefault2, getVarInfo = TRUE)
+
+# create 10% Test, 90% Train
+trainTestFiles <- rxSplit(inData = mortDefault2, 
+			transform = list(TrainTest = factor(ifelse(RandomSample<9,'Train','Test'))),
+			splitByFactor = "TrainTest", 
+			overwrite = TRUE)
+
+# the RevoScale rxDTree uses both regression and classification trees
+# decides based on the response variable (numeric -> regression, categorical -> classification)
+
+args(rxDTree)
+##rxDTree(formula, data,
+##    outFile = NULL, outColName = ".rxNode", writeModelVars = FALSE, extraVarsToWrite = NULL, overwrite = FALSE,
+##    pweights = NULL, fweights = NULL, method = NULL, parms = NULL, cost = NULL, 
+##    minSplit = max(20, sqrt(numObs)), minBucket = round(minSplit/3), maxDepth = 10, cp = 0,
+##    maxCompete = 0, maxSurrogate = 0, useSurrogate = 2, surrogateStyle = 0, xVal = 2,
+##    maxNumBins = NULL, maxUnorderedLevels = 32, removeMissings = FALSE, 
+##    useSparseCube = rxGetOption("useSparseCube"), pruneCp = 0,
+##    rowSelection = NULL, transforms = NULL, transformObjects = NULL, transformFunc = NULL,
+##    transformVars = NULL, transformPackages = NULL, transformEnvir = NULL,
+##    blocksPerRead = rxGetOption("blocksPerRead"), reportProgress = rxGetOption("reportProgress"),
+##    verbose = 0, computeContext = rxGetOption("computeContext"), 
+##    xdfCompressionLevel = rxGetOption("xdfCompressionLevel"),
+##    ...)
+
+# simple case
+treeR <-rxDTree(
+		formula = default ~ year + ccDebt + creditScore + houseAge + yearsEmploy
+		data = trainTestFiles[[1]], 
+		maxdepth = 5)	
+(treeR)
+
+# plotting the tree
+plot(rxAddInheritance(treeR), uniform = TRUE, margin=0.1)
+text(rxAddInheritance(treeR), digits = 2, cex=0.6)
+title(main = "Regression Tree for Mortgage Data")	
+
+# or use the interactive viewer from RevoTreeView
+library(RevoTreeView)
+plot(createTreeView(treeR))
+
+# use rxPredict to estimate the accuracy of the model
+rxPredict(treeR, data=trainTestFiles[[2]], outData=trainTestFiles[[2]], overwrite = TRUE, predVarNames = "Pred_R")
+
+#receiver operating characteristic ROC Curve
+rxRocCurve(actualVarName = "default", predVarNames = c("Pred_R"), data=trainTestFiles[[2]])
+# good performance (high AUC)
+
+# in order to build classification tree we need factors
+
+# Training Dataset
+rxFactors(inData = trainTestFiles[[1]], factorInfo = list(defaultFactor = list(varName = "default")),
+		outFile = trainTestFiles[[1]], overwrite=TRUE)
+
+# Testing Dataset
+rxFactors(inData = trainTestFiles[[2]], factorInfo = list(defaultFactor = list(varName = "default")),
+		outFile = trainTestFiles[[2]], overwrite=TRUE)
+
+# check that it is a factor
+rxGetVarInfo(trainTestFiles[[1]], getVarInfo = TRUE)
+
+# plot histogram
+rHistogram(~defaultFactor, data=trainTestFiles[[1]])
+
+# control <- list(...)
+treeC <-rxDTree(
+		formula = defaultFactor ~ year + ccDebt + creditScore + houseAge + yearsEmploy
+		data = trainTestFiles[[1]], 
+		control = control,
+		maxNumBins = 15000)	
+
+# plotting the tree
+plot(rxAddInheritance(treeC), uniform = TRUE, margin=0.1)
+text(rxAddInheritance(treeC), digits = 2, cex=0.6)
+title(main = "Classification Tree for Mortgage Data")	
+
+# or use RevoTreeViewer
+library(RevoTreeView)
+plot(createTreeView(treeC))
+
+# build confusion matrix
+conf.mat <- rxCrossTabs(~defaultFactor:Pred_CF, data = trainTestFiles[[2]])
+
+# hits, misses, false alarms and correct rejections
+prop.table(conf.mat)
+
+```
+
+## This concludes the Course [Big Data Analysis with Revolution R Enterprise](https://www.datacamp.com/courses/big-data-revolution-r-enterprise-tutorial)
+## Continue unlocking the power of the R language for advanced analytics on big data:
+# [http://www.revolutionanalytics.com/]
 
