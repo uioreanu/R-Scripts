@@ -1,4 +1,6 @@
 #
+# Statistical Inference and Data Analysis
+# https://campus.datacamp.com/courses/statistical-inference-and-data-analysis/
 # datacamp functionset 
 # inference, regression
 #
